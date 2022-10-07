@@ -92,7 +92,7 @@ module Jekyll
         class TabBlock < Liquid::Block
             alias_method :render_block, :render
 
-            SYNTAX = /^\s*(#{Liquid::QuotedFragment})\s+(?:for=(#{Liquid::QuotedFragment}))(?:\s+(defaultTab))?/o
+            SYNTAX = /^\s*(#{Liquid::QuotedFragment})\s+(?:for=(#{Liquid::QuotedFragment}))?(?:\s+(defaultTab))?/o
             Syntax = SYNTAX
 
             def initialize(block_name, markup, tokens)
@@ -100,7 +100,9 @@ module Jekyll
 
                 if markup =~ SYNTAX
                     @tab = Tabs::unquote($1)
-                    @name = Tabs::unquote($2)
+                    if $2
+                        @name = Tabs::unquote($2)
+                    end
                     @anchor = Tabs::asAnchor(@tab)
                     if $3
                         @defaultTab = true
@@ -121,6 +123,10 @@ module Jekyll
                 tab_env = environment["CURRENT_TABS_ENV"]
                 if tab_env.nil?
                     raise SyntaxError.new("Tab block '#{tabcontent.label}' must be inside a tabs block")
+                end
+                if !@name.nil? && tab_env != @name
+                    raise SyntaxError.new(
+                        "Tab block '#{@tab}' for=#{@name} does not match its enclosing tabs block #{tab_env}")
                 end
                 environment["tabs-#{tab_env}"] ||= []
                 environment["tabs-#{tab_env}"] << tabcontent
