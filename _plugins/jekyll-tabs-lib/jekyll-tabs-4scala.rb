@@ -43,8 +43,13 @@ module Jekyll
             def render(context)
                 environment = context.environments.first
                 environment["tabs-#{@name}"] = [] # reset every time (so page translations can use the same name)
-                super
-
+                if environment["CURRENT_TABS_ENV"].nil?
+                    environment["CURRENT_TABS_ENV"] = @name
+                else
+                    raise SyntaxError.new("Nested tabs are not supported")
+                end
+                super # super call renders the internal content
+                environment["CURRENT_TABS_ENV"] = nil # reset after rendering
                 foundDefault = false
 
                 allTabs = environment["tabs-#{@name}"]
@@ -113,8 +118,12 @@ module Jekyll
                 content = converter.convert(pre_content)
                 tabcontent = TabDetails.new(label: @tab, anchor: @anchor, defaultTab: @defaultTab, content: content)
                 environment = context.environments.first
-                environment["tabs-#{@name}"] ||= []
-                environment["tabs-#{@name}"] << tabcontent
+                tab_env = environment["CURRENT_TABS_ENV"]
+                if tab_env.nil?
+                    raise SyntaxError.new("Tab block '#{tabcontent.label}' must be inside a tabs block")
+                end
+                environment["tabs-#{tab_env}"] ||= []
+                environment["tabs-#{tab_env}"] << tabcontent
             end
         end
     end
